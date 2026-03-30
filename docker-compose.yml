@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: ny_taxi_postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./data-volume/postgres:/var/lib/postgresql/data
+      - ./init_sql:/docker-entrypoint-initdb.d
+    networks:
+      - ny_taxi_net
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ny_taxi_pgadmin
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - ./data-ui-volume/pgadmin:/var/lib/pgadmin
+    networks:
+      - ny_taxi_net
+
+  mage:
+    image: mageai/mageai:latest
+    container_name: ny_taxi_mage
+    restart: unless-stopped
+    command: mage start ${PROJECT_NAME}
+    env_file:
+      - .env
+    environment:
+      USER_CODE_PATH: /home/src
+      REQUIRE_USER_AUTHENTICATION: "false"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      TAXI_TYPE: ${TAXI_TYPE}
+      START_YEAR: ${START_YEAR}
+      END_YEAR: ${END_YEAR}
+    ports:
+      - "6789:6789"
+    depends_on:
+      - postgres
+    volumes:
+      - ./mage_data:/home/src
+    networks:
+      - ny_taxi_net
+
+networks:
+  ny_taxi_net:
+    driver: bridge
